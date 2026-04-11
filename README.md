@@ -17,7 +17,7 @@ https://raw.githubusercontent.com/crolankawasaki/Goida26-Clash/main/clash.yaml
    👉 [Скачать Clash Mi](https://apps.apple.com/us/app/clash-mi/id6744321968)
 2. Откройте **Clash Mi** → **Профили** → **+** → **URL**
 3. Вставьте ссылку: https://raw.githubusercontent.com/crolankawasaki/Goida26-Clash/main/clash.yaml
-4. 4. Нажмите **Сохранить**
+4. Нажмите **Сохранить**
 
 **Обновление:** нажмите на облако со стрелкой напротив профиля.
 
