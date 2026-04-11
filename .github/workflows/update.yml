@@ -418,6 +418,31 @@ jobs:
                           
               return proxies
 
+          def fix_duplicate_names(proxies):
+              """Исправляет дубликаты имён, добавляя (2), (3) и т.д."""
+              name_counts = {}
+              fixed_proxies = []
+              
+              for proxy in proxies:
+                  original_name = proxy["name"]
+                  name = original_name
+                  
+                  if name in name_counts:
+                      name_counts[name] += 1
+                      new_name = f"{name} ({name_counts[name]})"
+                      # Проверяем, нет ли уже такого имени
+                      while new_name in name_counts:
+                          name_counts[name] += 1
+                          new_name = f"{name} ({name_counts[name]})"
+                      proxy["name"] = new_name
+                      name = new_name
+                  else:
+                      name_counts[name] = 1
+                      
+                  fixed_proxies.append(proxy)
+                  
+              return fixed_proxies
+
           def check_tcp_port(proxy):
               try:
                   if proxy.get("type") == "wireguard":
@@ -497,8 +522,11 @@ jobs:
               print("🩺 Проверка доступности...")
               alive_proxies = filter_alive_proxies(all_proxies)
               
+              print("🔧 Исправление дубликатов имён...")
+              fixed_proxies = fix_duplicate_names(alive_proxies)
+              
               print("📝 Генерация YAML...")
-              config = generate_clash_config(alive_proxies)
+              config = generate_clash_config(fixed_proxies)
               
               with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
                   yaml.dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
