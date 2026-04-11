@@ -35,6 +35,7 @@ jobs:
           import json
           import re
           import sys
+          from datetime import datetime, timezone
 
           SOURCE_URL = "https://github.com/AvenCores/goida-vpn-configs/raw/refs/heads/main/githubmirror/26.txt"
           OUTPUT_FILE = "clash.yaml"
@@ -419,7 +420,6 @@ jobs:
               return proxies
 
           def fix_duplicate_names(proxies):
-              """Исправляет дубликаты имён, добавляя (2), (3) и т.д."""
               name_counts = {}
               fixed_proxies = []
               
@@ -430,7 +430,6 @@ jobs:
                   if name in name_counts:
                       name_counts[name] += 1
                       new_name = f"{name} ({name_counts[name]})"
-                      # Проверяем, нет ли уже такого имени
                       while new_name in name_counts:
                           name_counts[name] += 1
                           new_name = f"{name} ({name_counts[name]})"
@@ -446,7 +445,6 @@ jobs:
           def check_tcp_port(proxy):
               try:
                   if proxy.get("type") == "wireguard":
-                      print(f"⚠️ WireGuard пропущен (UDP): {proxy.get('server')}:{proxy.get('port')}")
                       return proxy
                       
                   server = proxy.get("server")
@@ -462,7 +460,6 @@ jobs:
                   if result == 0:
                       return proxy
                   else:
-                      print(f"❌ Мёртв: {server}:{port} ({proxy.get('name')})")
                       return None
               except:
                   return None
@@ -476,13 +473,12 @@ jobs:
                   for future in concurrent.futures.as_completed(futures):
                       result = future.result()
                       if result:
-                          print(f"✅ Жив: {result.get('server')}:{result.get('port')} ({result.get('name')}) - {result.get('type')}")
                           alive.append(result)
               
               print(f"✅ Найдено живых: {len(alive)} из {len(proxies)}")
               return alive
 
-          def generate_clash_config(proxies):
+          def generate_clash_config(proxies, total_parsed, alive_count):
               config = {
                   "proxies": proxies,
                   "proxy-groups": [
@@ -517,18 +513,25 @@ jobs:
               
               print("🔍 Парсинг всех форматов...")
               all_proxies = parse_proxies_from_text(content)
-              print(f"📦 Распознано прокси: {len(all_proxies)}")
+              total_parsed = len(all_proxies)
+              print(f"📦 Распознано прокси: {total_parsed}")
               
               print("🩺 Проверка доступности...")
               alive_proxies = filter_alive_proxies(all_proxies)
+              alive_count = len(alive_proxies)
               
               print("🔧 Исправление дубликатов имён...")
               fixed_proxies = fix_duplicate_names(alive_proxies)
               
               print("📝 Генерация YAML...")
-              config = generate_clash_config(fixed_proxies)
+              config = generate_clash_config(fixed_proxies, total_parsed, alive_count)
+              
+              # Сохраняем с мета-комментарием в начале файла
+              now_utc = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+              header = f"# Обновлено: {now_utc}\n# Всего в источнике: {total_parsed}\n# Живых серверов: {alive_count}\n# Источник: 26.txt\n\n"
               
               with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+                  f.write(header)
                   yaml.dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
               
               print(f"✅ Готово! Сохранено в {OUTPUT_FILE}")
@@ -543,4 +546,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add clash.yaml
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update config [skip ci]" && git push)
+          # Коммитим только если файл реально изменился
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🔄 Auto-update config [skip ci]" && git push)
